@@ -17,5 +17,9 @@ Track your Minswap liquidity provider trading fee rewards on Cardano.
 ## Notes
 Minswap pools charge 0.3% per swap, split to LPs. This tool queries on-chain swap transactions and attributes fees proportionally.
 
+## Donate
+Cardano donation address:
+`addr1q8hnl6vl5a6k3rw3n5g3jtte696zcl76kfatzv7gpswa9r0dj7fma6klq55y4ffm7tf0em09udnyhuk4ah92pl5x9jpqjae44v`
+
 ## License
 MIT
