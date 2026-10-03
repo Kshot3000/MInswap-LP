@@ -2,21 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Minswap LP Fee Tracker</title>
+<meta name="description" content="Estimate your share of Minswap LP trading fees on Cardano. Demo calculator — see the Python CLI for Blockfrost-backed transaction scans.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Minswap LP Fee Tracker">
+<meta property="og:description" content="Estimate your share of Minswap LP trading fees on Cardano. Demo calculator with labelled mock totals.">
 <style>
 body{font-family:system-ui,sans-serif;margin:2rem;background:#0f172a;color:#e2e8f0}
 .card{background:#1e293b;padding:1rem;border-radius:12px;margin-bottom:1rem}
 input,button{padding:0.5rem;margin:0.25rem}
 button{background:#38bdf8;color:#0f172a;border:none;border-radius:6px;cursor:pointer}
-pre{background:#0f172a;padding:1rem;border-radius:8px;overflow:auto}
+pre{background:#0f172a;padding:1rem;border-radius:8px;overflow:auto;white-space:pre-wrap}
+a{color:#38bdf8}
+.error{color:#fca5a5}
 </style>
 </head>
 <body>
 <h1>Minswap LP Fee Tracker</h1>
 <div class="card">
-<label>Pool Address<br><input id="pool" size="60" placeholder="addr1..."></label><br>
-<label>Your LP Balance<br><input id="balance" type="number" step="any"></label><br>
-<label>Total LP Supply<br><input id="supply" type="number" step="any"></label><br>
+<label for="pool">Pool Address<br><input id="pool" size="60" placeholder="addr1..."></label><br>
+<label for="balance">Your LP Balance<br><input id="balance" type="number" step="any" min="0"></label><br>
+<label for="supply">Total LP Supply<br><input id="supply" type="number" step="any" min="0"></label><br>
 <button onclick="calculate()">Calculate</button>
 </div>
 <div class="card">
@@ -24,24 +31,34 @@ pre{background:#0f172a;padding:1rem;border-radius:8px;overflow:auto}
 <pre id="output">Enter details and click Calculate.</pre>
 </div>
 <script>
+function validateAndCompute(balRaw, supRaw){
+ const balText=String(balRaw).trim(), supText=String(supRaw).trim();
+ if(balText===''||supText===''){return {error:'Fill in both LP balance and total supply.'}}
+ const bal=Number(balText), sup=Number(supText);
+ if(!Number.isFinite(bal)||!Number.isFinite(sup)){return {error:'Balances must be numbers.'}}
+ if(bal<0||sup<0){return {error:'Balances cannot be negative.'}}
+ if(sup===0){return {error:'Total LP supply must be greater than zero.'}}
+ if(bal>sup){return {error:'Your LP balance cannot exceed the total LP supply.'}}
+ const share=bal/sup;
+ const mockFees=0.0024; // demo total, matches the Python mock mode (2 txs x 0.0012 ADA)
+ return {share:share, mockFees:mockFees, rewards:mockFees*share};
+}
 function calculate(){
  const pool=document.getElementById('pool').value.trim();
- const bal=parseFloat(document.getElementById('balance').value);
- const sup=parseFloat(document.getElementById('supply').value);
- if(!pool||!bal||!sup){alert('Fill all fields');return}
- // Mock calculation - in production call backend API
- const share=bal/sup;
- const mockFees=0.0024; // mock total fees
- const rewards=mockFees*share;
- document.getElementById('output').textContent=
+ const out=document.getElementById('output');
+ if(!pool){out.innerHTML='<span class="error">Enter a pool address.</span>';return}
+ const r=validateAndCompute(document.getElementById('balance').value, document.getElementById('supply').value);
+ if(r.error){out.innerHTML='<span class="error">'+r.error+'</span>';return}
+ out.textContent=
  `Pool: ${pool}
- LP Share: ${(share*100).toFixed(4)}%
- Estimated total fees: ${mockFees.toFixed(6)} ADA
- Your estimated rewards: ${rewards.toFixed(6)} ADA
- Note: This is demo data. Connect Blockfrost API for real data.`;
+LP Share: ${(r.share*100).toFixed(4)}%
+Estimated total fees: ${r.mockFees.toFixed(6)} ADA
+Your estimated rewards: ${r.rewards.toFixed(6)} ADA
+Note: This is demo data with a fixed mock fee total. Use the Python CLI for a Blockfrost-backed transaction scan.`;
 }
 </script>
 <footer style="margin-top:2rem;font-size:0.85rem;color:#94a3b8">
+Built by <a href="https://x.com/kshot9000">@kshot9000</a> · <a href="https://github.com/Kshot3000/MInswap-LP">github.com/Kshot3000/MInswap-LP</a><br>
 Donations: addr1q8hnl6vl5a6k3rw3n5g3jtte696zcl76kfatzv7gpswa9r0dj7fma6klq55y4ffm7tf0em09udnyhuk4ah92pl5x9jpqjae44v
 </footer>
 </body>

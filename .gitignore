@@ -1,0 +1,8 @@
+# Holds BLOCKFROST_API_KEY — never commit a real key
+.env
+
+__pycache__/
+*.pyc
+
+# Default tracker output
+lp_rewards.csv

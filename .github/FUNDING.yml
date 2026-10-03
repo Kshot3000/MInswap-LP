@@ -1,3 +1,5 @@
 # GitHub Funding
-# Cardano donation address for this project
-cardano: addr1q8hnl6vl5a6k3rw3n5g3jtte696zcl76kfatzv7gpswa9r0dj7fma6klq55y4ffm7tf0em09udnyhuk4ah92pl5x9jpqjae44v
+# GitHub does not support a `cardano:` key (an earlier version of this file
+# used one and was silently ignored). The donation address lives in
+# README.md / DONATION.md; this custom link opens it on a Cardano explorer.
+custom: ["https://cexplorer.io/address/addr1q8hnl6vl5a6k3rw3n5g3jtte696zcl76kfatzv7gpswa9r0dj7fma6klq55y4ffm7tf0em09udnyhuk4ah92pl5x9jpqjae44v"]
