@@ -80,6 +80,64 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(result["lp_share"], Decimal("0"))
         self.assertEqual(result["user_rewards_ada"], Decimal("0"))
 
+    def test_unparseable_amounts_rejected_not_zeroed(self):
+        # Regression: parse_decimal used to fail open to Decimal("0"), so
+        # garbage input silently produced a 0% share / 0-rewards result
+        # with exit code 0 instead of an error.
+        for bad in ("abc", "", "   ", "1,000", "0x10", None):
+            with no_key_env(), self.assertRaises(ValueError, msg=repr(bad)):
+                tracker.calculate_lp_rewards("addr1pool", bad, "1000")
+            with no_key_env(), self.assertRaises(ValueError, msg=repr(bad)):
+                tracker.calculate_lp_rewards("addr1pool", "10", bad)
+
+    def test_non_finite_amounts_rejected(self):
+        # Regression: NaN parsed fine, then its comparisons raised
+        # decimal.InvalidOperation (not a ValueError) and crashed the
+        # CLI with a traceback; an infinite supply was accepted and
+        # reported a ~0 share as if it were measured.
+        for bad in ("NaN", "Infinity", "-Infinity", float("nan"), float("inf")):
+            with no_key_env(), self.assertRaises(ValueError, msg=repr(bad)):
+                tracker.calculate_lp_rewards("addr1pool", bad, "1000")
+            with no_key_env(), self.assertRaises(ValueError, msg=repr(bad)):
+                tracker.calculate_lp_rewards("addr1pool", "10", bad)
+        with no_key_env(), self.assertRaises(ValueError):
+            tracker.calculate_lp_rewards("addr1pool", "Infinity", "Infinity")
+
+    def test_cli_rejects_bad_amounts_with_exit_2_no_traceback(self):
+        for bad in ("abc", "NaN"):
+            argv = [
+                "--pool", "addr1pool", "--lp-balance", bad,
+                "--total-supply", "1000",
+            ]
+            err = io.StringIO()
+            with no_key_env(), self.assertRaises(SystemExit) as cm, \
+                    mock.patch("sys.stderr", err):
+                tracker.main(argv)
+            self.assertEqual(cm.exception.code, 2, bad)
+            self.assertNotIn("Traceback", err.getvalue())
+
+
+class NetworkConfigTests(unittest.TestCase):
+    def test_base_url_defaults_to_mainnet(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(
+                tracker.base_url(), "https://cardano-mainnet.blockfrost.io/api/v0"
+            )
+
+    def test_base_url_accepts_known_networks(self):
+        for net in ("preprod", "preview", " Preprod "):
+            with mock.patch.dict(os.environ, {"BLOCKFROST_NETWORK": net}, clear=True):
+                self.assertIn(f"cardano-{net.strip().lower()}.", tracker.base_url())
+
+    def test_base_url_rejects_arbitrary_network(self):
+        # The value is interpolated into the host name, so a value with
+        # path/query characters built a malformed (potentially
+        # wrong-host) URL instead of failing fast.
+        for bad in ("../evil?x=", "mainnet.evil", "", "testnet"):
+            with mock.patch.dict(os.environ, {"BLOCKFROST_NETWORK": bad}, clear=True), \
+                    self.assertRaises(ValueError, msg=repr(bad)):
+                tracker.base_url()
+
 
 class RealModeHonestyTests(unittest.TestCase):
     """With an API key + stubbed Blockfrost, fees must be reported as

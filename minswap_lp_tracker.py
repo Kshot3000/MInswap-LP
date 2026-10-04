@@ -44,8 +44,18 @@ def mock_mode():
     return api_key() is None
 
 
+BLOCKFROST_NETWORKS = ("mainnet", "preprod", "preview")
+
+
 def base_url():
-    network = os.getenv("BLOCKFROST_NETWORK", "mainnet")
+    network = os.getenv("BLOCKFROST_NETWORK", "mainnet").strip().lower()
+    if network not in BLOCKFROST_NETWORKS:
+        raise ValueError(
+            "BLOCKFROST_NETWORK must be one of "
+            f"{', '.join(BLOCKFROST_NETWORKS)} (got {network!r}); it is "
+            "interpolated into the Blockfrost host name, so arbitrary "
+            "values would build a malformed or wrong-host URL"
+        )
     return f"https://cardano-{network}.blockfrost.io/api/v0"
 
 
@@ -106,17 +116,31 @@ def estimate_fee(tx):
     return record
 
 
-def parse_decimal(value):
+def parse_decimal(value, field="value"):
+    """Parse a Decimal strictly; raises ValueError on bad input.
+
+    The previous version returned Decimal("0") for anything unparseable,
+    so a typo like ``--lp-balance abc`` (or an empty string, "1,000",
+    "0x10", None) silently became a real-looking 0% share / 0 rewards
+    result with exit code 0. It also let NaN through, and the NaN
+    comparisons in validate_position then raised decimal.InvalidOperation
+    — which is not a ValueError, so the CLI died with a traceback
+    instead of parser.error. Non-finite values (NaN, ±Infinity) are
+    rejected here, matching the dashboard's Number.isFinite check.
+    """
     try:
-        return Decimal(str(value))
-    except (InvalidOperation, TypeError):
-        return Decimal("0")
+        parsed = Decimal(str(value).strip())
+    except (InvalidOperation, TypeError, ValueError) as e:
+        raise ValueError(f"{field} must be a number (got {value!r})") from e
+    if not parsed.is_finite():
+        raise ValueError(f"{field} must be a finite number (got {value!r})")
+    return parsed
 
 
 def validate_position(lp_balance, total_lp_supply):
     """Parse and sanity-check an LP position; raises ValueError."""
-    balance = parse_decimal(lp_balance)
-    supply = parse_decimal(total_lp_supply)
+    balance = parse_decimal(lp_balance, "LP balance")
+    supply = parse_decimal(total_lp_supply, "Total LP supply")
     if balance < 0:
         raise ValueError("LP balance cannot be negative")
     if supply < 0:

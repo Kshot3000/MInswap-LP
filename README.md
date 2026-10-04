@@ -7,8 +7,11 @@ in demo mode — how fee rewards would be attributed to your share.
 ## Features
 - Fetch recent transactions for any Minswap pool address from Blockfrost
 - Compute your LP share (`your balance / total LP supply`) with `Decimal`
-  precision and input validation (negative or over-supply positions are
-  rejected instead of producing negative or >100% shares)
+  precision and input validation (unparseable or non-finite amounts, and
+  negative or over-supply positions, are rejected instead of silently
+  becoming 0 or producing negative or >100% shares). `BLOCKFROST_NETWORK`
+  is validated against `mainnet` / `preprod` / `preview` — it is
+  interpolated into the Blockfrost host name.
 - Export a CSV of the scanned transactions with the stdlib `csv` module
 - Mock mode with clearly labelled demo data when no API key is set, so the
   math and export can be tried offline with zero installs
@@ -43,7 +46,10 @@ in demo mode — how fee rewards would be attributed to your share.
 Covers the share math, position validation, mock timestamps in the CSV,
 real-mode "unavailable, never zero" behaviour (Blockfrost stubbed),
 stdlib CSV export, the README/CLI flag match, and the dashboard's
-validation logic (via Node, when available).
+validation logic (via Node, when available). The validation suite also
+guards the 2026-10-04 fixes: unparseable amounts are rejected rather
+than zeroed, non-finite (NaN/Infinity) amounts are rejected without a
+traceback, and arbitrary `BLOCKFROST_NETWORK` values are rejected.
 
 ## Donate
 Cardano donation address:

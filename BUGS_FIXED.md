@@ -46,3 +46,18 @@
 - Added `.gitignore` (`.env` holds a live API key and was one
   `git add .` away from being committed), first test suite, viewport/OG
   tags and @kshot9000 attribution on the dashboard.
+
+## Fixed 2026-10-04 (each reproduced before fixing)
+- `parse_decimal` failed open: any unparseable amount (`abc`, empty,
+  `1,000`, `0x10`, `None`) silently became `Decimal("0")`, so the CLI
+  exited 0 reporting a 0% share / 0 rewards as if calculated. It now
+  raises `ValueError`, and the CLI exits 2 via `parser.error`.
+- `NaN` amounts crashed instead of being rejected: `Decimal("NaN")`
+  parses, and its comparisons raised `decimal.InvalidOperation` (not a
+  `ValueError`), so the CLI died with a traceback. An infinite supply
+  was also accepted and reported a ~0 share. Non-finite values are now
+  rejected up front, matching the dashboard's `Number.isFinite` check.
+- `BLOCKFROST_NETWORK` was interpolated unchecked into the Blockfrost
+  host name; values containing path/query characters built a malformed
+  or wrong-host URL. It is now validated against
+  `mainnet` / `preprod` / `preview`.
